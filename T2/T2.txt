@@ -1,0 +1,171 @@
+// Copyright [2019] <Ezequiel Pilcsuk da Rosa e Gabriel Flores Soares>
+#include <iostream>
+#include <fstream>
+#include <list>
+
+const int ALPHABET_SIZE = 26;
+//! TrieNode struct
+/*!
+    \brief Estrutura de dados principal para implementação da arvore
+*/
+struct TrieNode {
+    char letter;
+    TrieNode* children[ALPHABET_SIZE];
+    int inicio;
+    int comprimento;  //Se for maior que zero, indica último caracter de uma palavra
+    bool isEndOfWord;
+};
+
+//! Cria arvore trie
+/*!
+    \brief Preenche arvore dada com dados indicados por caminho
+    \return void
+*/
+void create_trie(TrieNode*& tree, std::string path);
+
+//! Cria um novo nodo
+/*!
+    \brief A letra referente ao nodo criado é definido pelo char l
+    \returns O nodo criado
+*/
+TrieNode* newNode(char l);
+
+//! Insere um nodo
+/*!
+    \brief Cria um nodo com os dados especificados e coloca-o como raiz
+    \returns O último nodo criado
+*/
+TrieNode* insert(TrieNode* root, std::string data);
+
+//! Encontra palvra especificada no dicionário
+/*!
+    \brief Faz a busca a partir da raiz com complexidade O(n)
+    \returns Uma string com a posição dos dados, seu comprimento ou se é ou não prefixo
+*/
+std::string search(TrieNode* root, std::string data);
+
+int main() {
+
+    std::string filename;
+
+    // entrada
+    std::cin >> filename;
+
+    auto tree = newNode('.');
+    // inicializa a arvore
+    create_trie(tree, filename);
+    // cria lista a conter as palavras do dicionário
+    std::list<std::string> words;
+    {
+        std::string word;
+        while (1) {  // lê palavras até encontrar "0"
+            std::cin >> word;
+            if (word.compare("0") == 0) {
+                break;
+            }
+            // ao encontrar o fim de uma palavra, ela é incluída na lista
+            words.push_back(word);
+        }
+    }
+    // para cada palavra na lista
+    for (auto word: words)
+    {
+        std::cout << search(tree, word) << std::endl;
+    }
+
+
+    return 0;
+}
+
+void create_trie(TrieNode*& tree, std::string path)
+{
+    std::fstream file(path);
+    std::string line;
+    auto position = 0;
+    auto size = 0;
+    TrieNode* last;
+    auto again = false;
+    //  enquanto houver palavras no arquivo
+    while (std::getline(file, line))
+    {
+        auto contains_word = true;
+        std::string word = "";
+        size = line.size();
+        //  testa existência de mais palavras
+        if (line.rfind('[') == std::string::npos) // se ele nao encontrar [ ]
+        {
+            contains_word = false;
+        }
+        //  se ainda existirem mais palavras no arquivo
+        if (contains_word == true) {
+          //  cria string concatenando caracteres
+            for (int i = 1; i != line.size(); i++)
+            {
+                if (line.at(i) == ']')
+                    break;
+                word = word + line.at(i);
+            }
+            //  insere nova palavra na arvore, com seu comprimento e posição
+            last = insert(tree, word);
+            last->comprimento = size;
+            last->inicio = position;
+            //  seta nova posição para inicio da próxima linha
+            position = position + size + 1;
+        } else {
+            last->comprimento = position+size;
+            position = position + size+1;
+        }
+    }
+}
+//! Retorna um novo nodo da arvore
+TrieNode* newNode(char l)
+{
+    auto* pNode =  new TrieNode;
+
+    pNode->isEndOfWord = false;
+    pNode->letter = l;
+    pNode->inicio = 0;
+    pNode->comprimento = 0;
+
+    for (int i = 0; i < ALPHABET_SIZE; i++)
+        pNode->children[i] = NULL;
+
+    return pNode;
+}
+
+//!  Insere novo nodo na arvore
+TrieNode* insert(TrieNode* root, std::string data)
+{
+    auto* temp = root;
+
+    //  Para cada char na palavra
+    for (auto i = 0; i != data.length(); i++)
+    {
+        auto index = data[i] - 'a';
+        //  Se caminho até aquela letra não existente, cria
+        if (temp->children[index] == NULL)
+            temp->children[index] = newNode(data[i]);
+
+        temp = temp->children[index];
+    }
+    //  Ao chegar ao fim da palavra, seta nodo como fim de palavra
+    temp->isEndOfWord = true;
+    return temp;
+}
+//  Retorna informações sobre palavra
+std::string search(TrieNode* root, std::string data)
+{
+    auto* temp = root;
+
+    for (auto i = 0; i != data.length(); i++)
+    {
+        auto index = data[i] - 'a';
+        if (temp->children[index] == NULL) // palavra nao existe
+            return "is not prefix";
+
+        //  itera sobre nodos recentemente adicionados
+        temp = temp->children[index];
+    }
+    std::string result = std::to_string(temp->inicio) + " " + std::to_string(temp->comprimento);
+    return (temp->isEndOfWord)? result : "is prefix";
+}
